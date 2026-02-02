@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ITパスポートクイズ</title>
+    <!-- Google Fonts for Noto Sans JP and Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom scrollbar for a premium feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: theme('colors.background-light');
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: theme('colors.secondary');
+            border-radius: 10px;
+            border: 2px solid theme('colors.background-light');
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: theme('colors.primary');
+        }
+        /* Base font application */
+        body {
+            font-family: 'Noto Sans JP', sans-serif; /* Fallback */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Custom font classes from Tailwind config */
+        .font-display {
+            font-family: 'Outfit', sans-serif;
+        }
+        .font-body {
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+
+        /* Custom radio button styling */
+        .option-item input[type="radio"]:checked + label span:first-child span {
+            transform: scale(1);
+            background-color: theme('colors.primary'); /* Default selected dot color */
+        }
+    </style>
+    <script>
+        // Extend Tailwind CSS configuration
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': 'hsl(210, 80%, 55%)',       /* Vibrant blue */
+                        'primary-dark': 'hsl(210, 80%, 45%)',  /* Darker primary for hover */
+                        'secondary': 'hsl(210, 40%, 90%)',     /* Soft light blue for options/background elements */
+                        'background-light': 'hsl(220, 15%, 97%)', /* Very light cool gray for main background */
+                        'card-background': 'hsl(0, 0%, 100%)',  /* Crisp white for cards */
+                        'text-dark': 'hsl(220, 20%, 25%)',      /* Dark charcoal for main text */
+                        'text-muted': 'hsl(220, 10%, 45%)',     /* Mid-gray for secondary text */
+                        'correct': 'hsl(140, 70%, 50%)',       /* Green for correct answers */
+                        'correct-light': 'hsl(140, 70%, 90%)', /* Light green for correct selection background */
+                        'incorrect': 'hsl(0, 70%, 60%)',       /* Red for incorrect answers */
+                        'incorrect-light': 'hsl(0, 70%, 90%)', /* Light red for incorrect selection background */
+                    },
+                    fontFamily: {
+                        display: ['Outfit', 'sans-serif'],
+                        body: ['Noto Sans JP', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 12px rgba(0, 0, 0, 0.08)', /* Subtle shadow for cards */
+                        'md': '0 6px 20px rgba(0, 0, 0, 0.10)',
+                        'lg': '0 10px 30px rgba(0, 0, 0, 0.15)',
+                    },
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background-light font-body text-text-dark min-h-screen flex flex-col antialiased">
+    <!-- Header Section -->
+    <header class="bg-primary text-white p-4 shadow-lg sticky top-0 z-10">
+        <div class="container mx-auto px-4">
+            <h1 class="text-3xl sm:text-4xl font-display font-bold tracking-tight">ITパスポートクイズ</h1>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="container mx-auto p-4 md:py-8 flex-grow">
+        <div id="quiz-container" class="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-6 md:gap-8 lg:gap-12">
+            <!-- Left Column: Quiz Interface -->
+            <section class="md:col-span-1">
+                <!-- Quiz Card Component -->
+                <div id="quiz-card" class="bg-card-background rounded-2xl shadow-soft p-6 md:p-8 lg:p-10 mb-6 transition-all duration-300 ease-in-out">
+                    <p class="text-text-muted text-sm font-medium mb-2">問題 <span id="current-question-number">1</span> / <span id="total-questions"></span></p>
+                    <h2 id="question-text" class="text-xl md:text-2xl font-body font-semibold mb-6 leading-relaxed"></h2>
+                    <div id="options-container" class="space-y-4">
+                        <!-- Options will be rendered here by JavaScript -->
+                    </div>
+                    <button id="submit-button" class="mt-8 w-full py-3 px-6 rounded-lg bg-primary text-white font-bold text-lg shadow-md hover:bg-primary-dark transition-all duration-300 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed">
+                        回答を提出
+                    </button>
+                </div>
+
+                <!-- Explanation Section (hidden by default) -->
+                <div id="explanation-section" class="bg-card-background rounded-2xl shadow-soft p-6 md:p-8 lg:p-10 mt-6 hidden">
+                    <h3 class="font-display text-xl font-bold mb-4 text-primary">解説</h3>
+                    <p class="font-semibold mb-2 text-text-dark">正解: <span id="correct-answer-display" class="font-body text-correct"></span></p>
+                    <p id="explanation-text" class="text-text-dark leading-relaxed"></p>
+                    <button id="next-button" class="mt-6 w-full py-3 px-6 rounded-lg bg-secondary text-text-dark font-bold text-lg shadow-sm hover:bg-primary hover:text-white transition-all duration-300 ease-in-out">
+                        次の問題へ
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right Column: Results & Advice (Order changed for mobile responsiveness) -->
+            <aside class="md:col-span-1 order-first md:order-last">
+                <!-- Progress Card -->
+                <div id="progress-card" class="bg-card-background rounded-2xl shadow-soft p-6 md:p-8 lg:p-10 mb-6">
+                    <h3 class="font-display text-xl font-bold mb-4 text-text-dark">解答状況</h3>
+                    <div class="flex items-center mb-4">
+                        <div class="w-full bg-secondary rounded-full h-3">
+                            <div id="progress-bar" class="bg-primary h-3 rounded-full transition-all duration-500 ease-in-out" style="width: 0%;"></div>
+                        </div>
+                        <span id="progress-text" class="ml-4 text-text-muted font-medium">0%</span>
+                    </div>
+                    <p class="text-text-muted">正答数: <span id="correct-count">0</span> / <span id="total-answered">0</span></p>
+                </div>
+
+                <!-- Results Card (hidden by default) -->
+                <div id="results-card" class="bg-card-background rounded-2xl shadow-soft p-6 md:p-8 lg:p-10 hidden">
+                    <h3 class="font-display text-2xl font-bold mb-4 text-primary">クイズ結果</h3>
+                    <p class="text-text-dark text-lg mb-2">最終正答率:</p>
+                    <p id="final-score" class="font-display text-5xl font-extrabold text-primary mb-6 animate-pulse"></p>
+
+                    <h4 class="font-display text-xl font-bold mb-4 text-text-dark">パーソナライズされた学習アドバイス</h4>
+                    <div id="advice-list" class="space-y-3">
+                        <p class="text-text-muted italic">（クイズを完了すると、苦手なトピックが表示されます）</p>
+                        <!-- Advice topics will be rendered here by JavaScript -->
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </main>
+
+    <script>
+        // Quiz Data from User Instructions
+        const quizData = [
+          {
+            "question": "SLCP（System Life Cycle Process）において、システムの企画から廃棄までの各プロセスを対象とした国際規格はどれか。",
+            "options": [
+              "ア. ISO 9001",
+              "イ. ISO/IEC 27001",
+              "ウ. ISO/IEC 12207",
+              "エ. PMBOK"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "SLCP（System Life Cycle Process）は、システムの企画、要件定義、開発、運用、保守、廃棄に至るまでのプロセスを定めたものです。このSLCPに関する国際規格はISO/IEC 12207です。ISO 9001は品質マネジメントシステム、ISO/IEC 27001は情報セキュリティマネジメントシステム、PMBOKはプロジェクトマネジメントの知識体系ガイドです。",
+            "topic": "SLCP"
+          },
+          {
+            "question": "システム開発の企画プロセスにおいて、経営戦略に基づいて情報システムの方向性を決定し、投資対効果やリスクを評価して、システム化の全体像を明確にする活動を何と呼ぶか。",
+            "options": [
+              "ア. システム化計画",
+              "イ. システム化構想",
+              "ウ. 業務要件定義",
+              "エ. システム要件定義"
+            ],
+            "correct_answer": "イ",
+            "explanation": "システム化構想は、経営戦略に基づいて、企業全体の情報システムのあるべき姿や方向性を定め、投資対効果やリスクなどを考慮してシステム化の全体像を明確にする活動です。システム化計画は、その構想に基づき、具体的な開発スケジュールや体制、予算などを詳細に決定するプロセスです。",
+            "topic": "企画プロセス"
+          },
+          {
+            "question": "システム開発における要件定義プロセスにおいて、利用者がシステムに何を求めるか、ビジネス上の課題を解決するためにシステムが提供すべき機能やサービス、達成すべき目標を明確にする活動を何と呼ぶか。",
+            "options": [
+              "ア. システム要件定義",
+              "イ. 業務要件定義",
+              "ウ. 機能要件定義",
+              "エ. 非機能要件定義"
+            ],
+            "correct_answer": "イ",
+            "explanation": "業務要件定義は、利用者の視点から、ビジネス上の課題解決や目標達成のためにシステムが果たすべき役割や、実現すべき業務プロセス、運用方法などを明確にする活動です。機能要件定義はシステムが提供すべき具体的な機能、非機能要件定義は性能や信頼性、セキュリティなどの要件、システム要件定義はこれらの総称となります。",
+            "topic": "要件定義プロセス"
+          },
+          {
+            "question": "システム調達プロセスにおいて、ベンダー候補から一般的な情報や技術動向に関する情報提供を求める文書はどれか。",
+            "options": [
+              "ア. RFP",
+              "イ. RFI",
+              "ウ. NDA",
+              "エ. SOW"
+            ],
+            "correct_answer": "イ",
+            "explanation": "RFI（Request For Information）は、情報提供依頼書と呼ばれ、ベンダーに対して一般的な情報や技術動向、自社の製品・サービスに関する情報などを幅広く提供してもらうための文書です。RFP（Request For Proposal）は、具体的な提案を依頼する際に使用されます。",
+            "topic": "調達"
+          },
+          {
+            "question": "ソフトウェア開発プロセスにおいて、開発途中の成果物（設計書、コードなど）を複数人で確認し、誤りや改善点を見つけるための活動を何と呼ぶか。",
+            "options": [
+              "ア. 単体テスト",
+              "イ. 結合テスト",
+              "ウ. 共同レビュー",
+              "エ. リリース管理"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "共同レビュー（ピアレビュー）は、開発途中の成果物を複数人の開発者や関係者が集まって確認し、問題点や改善点を早期に発見するための手法です。これにより、品質向上や手戻りの削減に貢献します。",
+            "topic": "開発プロセス"
+          },
+          {
+            "question": "ソフトウェア品質特性の一つである「信頼性」について、最も適切に説明しているものはどれか。",
+            "options": [
+              "ア. ソフトウェアが意図された機能を実行できる程度。",
+              "イ. ソフトウェアが障害なく指定された機能を実行し続けることができる程度。",
+              "ウ. ソフトウェアを理解し、学習し、操作し、魅力的に感じる程度の容易さ。",
+              "エ. ソフトウェアを将来の変更や修正を容易に行える程度。"
+            ],
+            "correct_answer": "イ",
+            "explanation": "信頼性は、ソフトウェアが障害なく指定された機能を、指定された時間、指定された条件下で実行し続けることができる程度を指します。アは機能性、ウは使用性、エは保守性の説明です。",
+            "topic": "ソフトウェア品質特性"
+          },
+          {
+            "question": "ソフトウェアテストの手法において、プログラムの内部構造や処理の流れに着目し、ソースコードの網羅性などを検証する手法はどれか。",
+            "options": [
+              "ア. ブラックボックステスト",
+              "イ. ホワイトボックステスト",
+              "ウ. システムテスト",
+              "エ. 受入テスト"
+            ],
+            "correct_answer": "イ",
+            "explanation": "ホワイトボックステストは、プログラムの内部構造や論理に着目し、命令網羅や分岐網羅といったカバレッジ基準を用いて、すべてのパスが実行されるようにテストケースを作成する手法です。これに対し、ブラックボックステストは、プログラムの内部構造を考慮せず、外部仕様に基づいて機能が期待通りに動作するかを検証します。",
+            "topic": "テスト手法"
+          },
+          {
+            "question": "アジャイル開発の一種であり、通常2〜4週間の短い期間を「スプリント」と呼び、この期間内に計画、開発、テスト、レビュー、改善を行うことを繰り返す開発手法はどれか。",
+            "options": [
+              "ア. ウォーターフォールモデル",
+              "イ. XP（eXtreme Programming）",
+              "ウ. スクラム開発",
+              "エ. プロトタイピングモデル"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "スクラム開発は、アジャイル開発のフレームワークの一つで、「スプリント」と呼ばれる短い期間（通常2〜4週間）で開発サイクルを繰り返し、迅速にフィードバックを得ながら開発を進めます。XPもアジャイル開発の一種ですが、「イテレーション」という用語を使い、より厳格なプラクティスを持ちます。",
+            "topic": "開発手法"
+          },
+          {
+            "question": "ソフトウェアの見積もり手法の一つで、プログラムの規模を、外部入出力や問い合わせ、内部論理ファイルなどの機能点数に分解して算出し、開発工数を見積もる方法はどれか。",
+            "options": [
+              "ア. 類推見積法",
+              "イ. 三点見積法",
+              "ウ. ファンクションポイント法",
+              "エ. パラメトリック見積法"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "ファンクションポイント法は、ソフトウェアの機能的側面に着目し、入出力、問い合わせ、ファイルなどの要素を数え、複雑度を考慮して機能点数（ファンクションポイント）を算出します。この点数を用いて、過去のデータや経験に基づいて開発工数やコストを見積もります。",
+            "topic": "見積法"
+          },
+          {
+            "question": "プロジェクトマネジメントに関する知識体系として世界的に広く認知され、プロジェクトの立ち上げから終結までのプロセスや知識エリアを体系化したガイドはどれか。",
+            "options": [
+              "ア. ITIL",
+              "イ. ISO/IEC 12207",
+              "ウ. PMBOK",
+              "エ. CMMI"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "PMBOK（Project Management Body of Knowledge）は、プロジェクトマネジメント協会（PMI）が発行するプロジェクトマネジメントに関する知識体系ガイドです。プロジェクトの立ち上げ、計画、実行、監視・コントロール、終結の各プロセス群と、統合、スコープ、タイム、コスト、品質、資源、コミュニケーション、リスク、調達、ステークホルダの10の知識エリアを体系的に記述しています。",
+            "topic": "プロジェクトマネジメント"
+          },
+          {
+            "question": "アローダイアグラムを用いてプロジェクトのスケジュールを分析する際、プロジェクト全体の完了を遅らせることなく、その作業の開始や完了を遅らせることができない一連の作業経路を何と呼ぶか。",
+            "options": [
+              "ア. 最早開始日",
+              "イ. 最遅開始日",
+              "ウ. クリティカルパス",
+              "エ. マイルストーン"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "クリティカルパスは、プロジェクトの中で最も時間がかかり、プロジェクト全体の完了日を決定する一連のタスク経路です。クリティカルパス上のタスクが遅延すると、プロジェクト全体の完了も遅延するため、重点的に管理する必要があります。",
+            "topic": "プロジェクトマネジメント"
+          },
+          {
+            "question": "ITサービスマネジメントのベストプラクティスを集めたガイドラインとして、世界的に広く利用されているフレームワークはどれか。",
+            "options": [
+              "ア. PMBOK",
+              "イ. COBIT",
+              "ウ. ITIL",
+              "エ. TOGAF"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "ITIL（Information Technology Infrastructure Library）は、ITサービスマネジメントに関するベストプラクティスを集めたガイドラインであり、ITサービスを効果的かつ効率的に提供するためのフレームワークとして世界中で広く利用されています。",
+            "topic": "ITサービスマネジメント"
+          },
+          {
+            "question": "サービス提供者と顧客の間で合意される、提供されるITサービスの品質水準、責任範囲、目標値などを明文化した文書はどれか。",
+            "options": [
+              "ア. OLA",
+              "イ. UC",
+              "ウ. SLM",
+              "エ. SLA"
+            ],
+            "correct_answer": "エ",
+            "explanation": "SLA（Service Level Agreement：サービスレベル合意書）は、サービス提供者と顧客の間で合意される、提供されるサービスの品質水準（可用性、性能、応答時間など）、責任範囲、目標値などを明記した文書です。",
+            "topic": "ITサービスマネジメント"
+          },
+          {
+            "question": "システム監査において、監査の独立性を確保し、客観的な視点から情報システムの適切性を評価する役割を担うのは誰か。",
+            "options": [
+              "ア. プロジェクトマネージャ",
+              "イ. システム管理者",
+              "ウ. システム監査人",
+              "エ. ユーザー部門長"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "システム監査人は、監査の目的である情報システムの信頼性、安全性、効率性などの適切性を、客観的かつ独立した立場で評価する専門家です。監査の独立性が特に重要視されます。",
+            "topic": "システム監査"
+          },
+          {
+            "question": "企業の財務健全性を示す指標の一つで、総資本に占める自己資本の割合を示すのはどれか。数値が高いほど返済不要な資金が多いことを意味する。",
+            "options": [
+              "ア. 流動比率",
+              "イ. 固定比率",
+              "ウ. 自己資本比率",
+              "エ. 売上総利益率"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "自己資本比率は、企業の総資本（負債＋自己資本）のうち、返済義務のない自己資本が占める割合を示す指標です。この比率が高いほど、企業の財務基盤が安定しており、倒産しにくいと判断されます。",
+            "topic": "財務諸表"
+          },
+          {
+            "question": "企業が株主から調達した資本をどれだけ効率的に利益に結びつけているかを示す指標で、「当期純利益 ÷ 自己資本」で計算されるものはどれか。",
+            "options": [
+              "ア. ROA",
+              "イ. ROE",
+              "ウ. 売上総利益率",
+              "エ. 総資本回転率"
+            ],
+            "correct_answer": "イ",
+            "explanation": "ROE（Return On Equity：自己資本利益率）は、自己資本に対してどれだけの純利益を上げたかを示す指標で、株主が出資した資本をいかに効率的に活用して利益を上げているかを表します。",
+            "topic": "財務諸表"
+          },
+          {
+            "question": "売上高と費用が等しくなり、利益がゼロとなる売上高を損益分岐点売上高という。この計算において、売上高の増減にかかわらず発生する費用を何と呼ぶか。",
+            "options": [
+              "ア. 変動費",
+              "イ. 固定費",
+              "ウ. 総費用",
+              "エ. 限界費用"
+            ],
+            "correct_answer": "イ",
+            "explanation": "固定費は、売上高や生産量の増減に関わらず、常に一定額発生する費用です（例：家賃、減価償却費、人件費の一部）。変動費は、売上高や生産量に比例して増減する費用です（例：原材料費、販売手数料）。",
+            "topic": "損益分岐点"
+          },
+          {
+            "question": "棚卸資産の評価方法の一つで、先に仕入れた商品から先に販売されたと仮定して原価を計算する方法はどれか。",
+            "options": [
+              "ア. 後入先出法",
+              "イ. 先入先出法",
+              "ウ. 移動平均法",
+              "エ. 総平均法"
+            ],
+            "correct_answer": "イ",
+            "explanation": "先入先出法（First-In, First-Out: FIFO）は、先に購入した在庫が先に販売されたものと仮定して、期末の在庫評価額や売上原価を計算する方法です。インフレ時には利益が過大に評価されがちです。",
+            "topic": "在庫管理"
+          },
+          {
+            "question": "著作権の一部であり、著作者がその著作物に対して持っている人格的な利益を保護する権利で、公表権、氏名表示権、同一性保持権などを含むものはどれか。",
+            "options": [
+              "ア. 著作財産権",
+              "イ. 著作人格権",
+              "ウ. 特許権",
+              "エ. 意匠権"
+            ],
+            "correct_answer": "イ",
+            "explanation": "著作人格権は、著作者の精神的な利益を保護する権利であり、譲渡や相続ができません。公表権（未公表の著作物を公表するかどうか決める権利）、氏名表示権（著作者名を表示するかどうか決める権利）、同一性保持権（著作物の内容や題号を勝手に改変されない権利）などがあります。",
+            "topic": "知的財産権"
+          },
+          {
+            "question": "発明を保護するための権利で、新規性、進歩性、産業上の利用可能性などの要件を満たす発明に対して、出願から一定期間独占的に利用する権利を付与するものはどれか。",
+            "options": [
+              "ア. 実用新案権",
+              "イ. 意匠権",
+              "ウ. 商標権",
+              "エ. 特許権"
+            ],
+            "correct_answer": "エ",
+            "explanation": "特許権は、高度な技術的創作である「発明」を保護するための権利です。特許庁に出願し審査を経て登録されることで、特許権者はその発明を独占的に実施できる権利を得ます。",
+            "topic": "知的財産権"
+          },
+          {
+            "question": "他人のIDやパスワードを不正に利用したり、セキュリティ上の脆弱性を悪用して、ネットワークを通じてコンピュータシステムへ権限なく侵入する行為を禁じる法律はどれか。",
+            "options": [
+              "ア. 個人情報保護法",
+              "イ. サイバーセキュリティ基本法",
+              "ウ. 不正アクセス禁止法",
+              "エ. 特定電子メール法"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "不正アクセス禁止法（不正アクセス行為の禁止等に関する法律）は、コンピュータネットワークを通じて、権限のない者が他人のコンピュータに不正に侵入する行為を禁止し、罰則を定めています。",
+            "topic": "セキュリティ関連法規"
+          },
+          {
+            "question": "個人情報保護法において、特定の個人を識別できる情報のうち、身体の一部の特徴をデータ化したものや、サービス利用時に割り当てられる番号など、政令で定められたものを指す用語はどれか。",
+            "options": [
+              "ア. 要配慮個人情報",
+              "イ. 個人識別符号",
+              "ウ. 個人関連情報",
+              "エ. 匿名加工情報"
+            ],
+            "correct_answer": "イ",
+            "explanation": "個人識別符号とは、特定の個人を識別できる情報のうち、指紋データ、顔画像認識データ、旅券番号、運転免許証番号、マイナンバーなど、政令で定められたものを指します。",
+            "topic": "個人情報保護法"
+          },
+          {
+            "question": "EU域内の個人データ保護を目的とした法令で、企業がEU居住者の個人データを取り扱う際に厳格な規則を課し、違反した場合に高額な制裁金を科す可能性があるものはどれか。",
+            "options": [
+              "ア. 特定電子メール法",
+              "イ. サイバーセキュリティ基本法",
+              "ウ. 個人情報保護法",
+              "エ. GDPR"
+            ],
+            "correct_answer": "エ",
+            "explanation": "GDPR（General Data Protection Regulation：一般データ保護規則）は、EU域内の個人データ保護を目的とした包括的な法令です。EU居住者の個人データを取り扱う全ての組織に適用され、その厳格な規則と高額な制裁金が特徴です。",
+            "topic": "GDPR"
+          },
+          {
+            "question": "システムやソフトウェアの開発初期段階からセキュリティを考慮し、設計段階からセキュリティ対策を組み込むアプローチを何と呼ぶか。",
+            "options": [
+              "ア. コーディング規約",
+              "イ. 共同レビュー",
+              "ウ. セキュリティバイデザイン",
+              "エ. リバースエンジニアリング"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "セキュリティバイデザインは、システムの企画・設計段階からセキュリティ要件を組み込み、脆弱性を事前に防ぐという考え方です。開発の後工程でセキュリティ対策を追加するよりも、費用対効果が高く、より堅牢なシステム構築が期待できます。",
+            "topic": "開発プロセス"
+          },
+          {
+            "question": "システム開発手法の一つで、要件定義、設計、実装、テスト、運用といった工程を前の工程が完了した後に次の工程に進むというように、滝の水が流れ落ちるように順次進めるモデルはどれか。",
+            "options": [
+              "ア. アジャイル開発",
+              "イ. ウォーターフォールモデル",
+              "ウ. プロトタイピングモデル",
+              "エ. スパイラルモデル"
+            ],
+            "correct_answer": "イ",
+            "explanation": "ウォーターフォールモデルは、計画から実装、テスト、運用まで、各工程を順序立てて進める伝統的な開発手法です。前の工程に戻ることは基本的に想定されておらず、大規模で要件が明確なプロジェクトに適しています。",
+            "topic": "開発手法"
+          },
+          {
+            "question": "組織内の複数のプロジェクトに対して、標準化されたプロセス、ツール、テンプレートを提供し、プロジェクトマネジメントに関する専門知識やサポートを一元的に行う部門または機能はどれか。",
+            "options": [
+              "ア. サービスデスク",
+              "イ. システム監査部門",
+              "ウ. プロジェクトマネジメントオフィス（PMO）",
+              "エ. IT資産管理部門"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "プロジェクトマネジメントオフィス（PMO）は、組織内のプロジェクト活動を支援し、一貫性と効率性を高めるための部門や機能です。プロジェクトマネジメントの標準化、リソース管理、トレーニングなどを提供します。",
+            "topic": "プロジェクトマネジメント"
+          },
+          {
+            "question": "ITサービスマネジメントにおいて、サービスの予期せぬ中断や品質の低下が発生した際に、サービスをできるだけ早く回復させることを目的としたプロセスはどれか。",
+            "options": [
+              "ア. 問題管理",
+              "イ. 変更管理",
+              "ウ. インシデント管理",
+              "エ. 構成管理"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "インシデント管理は、ITサービスの停止や品質低下などの「インシデント」が発生した際に、可能な限り迅速にサービスを通常の運用状態に回復させることを目的とします。",
+            "topic": "ITサービスマネジメント"
+          },
+          {
+            "question": "システム監査において、監査人が監査意見を形成するために利用する、信頼性のある情報や資料を何と呼ぶか。",
+            "options": [
+              "ア. 監査計画",
+              "イ. 監査調書",
+              "ウ. 監査証拠",
+              "エ. 監査報告書"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "監査証拠は、監査人が監査意見を裏付けるために収集する、客観的で信頼性のある情報や資料のことです。これには文書、記録、インタビュー結果、観察結果などが含まれます。",
+            "topic": "システム監査"
+          },
+          {
+            "question": "キャッシュフロー計算書において、企業の主たる営業活動（商品の販売やサービスの提供など）による現金の増減を示す区分はどれか。",
+            "options": [
+              "ア. 投資活動によるキャッシュフロー",
+              "イ. 財務活動によるキャッシュフロー",
+              "ウ. 営業活動によるキャッシュフロー",
+              "エ. 固定活動によるキャッシュフロー"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "営業活動によるキャッシュフローは、企業の通常の営業活動（商品の仕入れ、販売、サービスの提供、人件費の支払いなど）によって生じた現金の流れを示します。この数値がプラスであることが望ましいとされます。",
+            "topic": "財務諸表"
+          },
+          {
+            "question": "デジタルコンテンツに、肉眼ではほとんど識別できない形で著作権情報や利用者情報などを埋め込み、不正コピーや配布元を特定するための技術はどれか。",
+            "options": [
+              "ア. DRM",
+              "イ. CPRM",
+              "ウ. アクティベーション",
+              "エ. デジタル・ウォーターマーク"
+            ],
+            "correct_answer": "エ",
+            "explanation": "デジタル・ウォーターマークは、画像や音声、動画などのデジタルコンテンツに、知覚できない形で情報を埋め込む技術です。これにより、著作権表示、コンテンツの認証、不正コピーの追跡などが可能になります。",
+            "topic": "知的財産権"
+          },
+          {
+            "question": "ソフトウェアの利用形態の一つで、買い取りではなく、一定期間の利用料を支払うことでソフトウェアやサービスを利用できる方式はどれか。",
+            "options": [
+              "ア. シュリンクラップライセンス",
+              "イ. ボリュームライセンス",
+              "ウ. サイトライセンス",
+              "エ. サブスクリプション"
+            ],
+            "correct_answer": "エ",
+            "explanation": "サブスクリプションは、ソフトウェアやサービスを期間契約で利用する方式です。買い取り型と異なり、定期的に利用料を支払うことで常に最新版のソフトウェアを利用できるメリットがあります。",
+            "topic": "ソフトウェア使用承諾"
+          },
+          {
+            "question": "ソフトウェア開発と運用（Operations）を密接に連携させ、開発チームと運用チームが協調して、迅速かつ継続的にソフトウェアをリリースし、サービスの品質を高めることを目指す考え方や文化はどれか。",
+            "options": [
+              "ア. ウォーターフォールモデル",
+              "イ. プロトタイピングモデル",
+              "ウ. DevOps",
+              "エ. リバースエンジニアリング"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "DevOpsは、開発（Development）と運用（Operations）の略で、ソフトウェア開発のライフサイクル全体を通じて、開発者と運用者が協力し、自動化されたプロセスを用いて、より迅速かつ信頼性の高いソフトウェアリリースと運用を目指す文化、プラクティス、ツールの組み合わせです。",
+            "topic": "開発手法"
+          },
+          {
+            "question": "プロジェクトの全作業を、達成すべき成果物（Work Package）を基準にして、階層的に分解していく構造図を何と呼ぶか。",
+            "options": [
+              "ア. ガントチャート",
+              "イ. アローダイアグラム",
+              "ウ. WBS",
+              "エ. バーンダウンチャート"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "WBS（Work Breakdown Structure：作業分解構造）は、プロジェクトの全作業スコープを、成果物ベースで階層的に分解し、管理しやすい単位（ワークパッケージ）にまで細分化するツールです。これにより、作業の漏れを防ぎ、プロジェクトの範囲を明確にします。",
+            "topic": "プロジェクトマネジメント"
+          },
+          {
+            "question": "ITサービスの利用者からの問い合わせやインシデント、サービス要求などの窓口を一元的に提供し、迅速な対応と情報提供を行う機能はどれか。",
+            "options": [
+              "ア. 構成管理",
+              "イ. サービスデスク",
+              "ウ. 問題管理",
+              "エ. 変更管理"
+            ],
+            "correct_answer": "イ",
+            "explanation": "サービスデスクは、ITサービスの利用者からのあらゆる問い合わせ（質問、インシデント報告、サービス要求など）を一元的に受け付け、解決に導くための単一の連絡窓口（SPOC: Single Point of Contact）として機能します。",
+            "topic": "ITサービスマネジメント"
+          },
+          {
+            "question": "経済産業省が策定した、情報システムの管理体制や運用状況を評価するための一般的な基準を示すものはどれか。",
+            "options": [
+              "ア. システム監査基準",
+              "イ. システム管理基準",
+              "ウ. ISO/IEC 27001",
+              "エ. PMBOK"
+            ],
+            "correct_answer": "イ",
+            "explanation": "システム管理基準は、経済産業省が策定した、情報システムの企画、開発、運用、保守などの各段階における管理体制や運用状況の適切性を評価するための基準です。システム監査基準は、システム監査人が監査を行う際の実施基準を定めたものです。",
+            "topic": "システム監査"
+          },
+          {
+            "question": "企業の短期的な支払い能力を示す指標で、「流動資産 ÷ 流動負債 × 100」で計算されるものはどれか。数値が高いほど短期的な安全性が高いとされる。",
+            "options": [
+              "ア. 固定比率",
+              "イ. 自己資本比率",
+              "ウ. 流動比率",
+              "エ. 売上総利益率"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "流動比率は、流動資産を流動負債で割ることで、企業が1年以内に現金化できる資産（流動資産）で、1年以内に支払うべき負債（流動負債）をどの程度カバーできるかを示す指標です。一般的に150%以上が望ましいとされます。",
+            "topic": "財務諸表"
+          },
+          {
+            "question": "ソフトウェア開発において、ソースコードの可読性や保守性を向上させるために、変数名の付け方、インデント、コメントの記述方法などを標準化したルールを何と呼ぶか。",
+            "options": [
+              "ア. プログラム言語",
+              "イ. 設計パターン",
+              "ウ. コーディング規約",
+              "エ. リファクタリング"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "コーディング規約は、開発チーム内でソースコードの記述方法を統一するためのルールです。これにより、コードの可読性が高まり、チームメンバー間での理解が容易になり、保守性が向上します。",
+            "topic": "開発プロセス"
+          },
+          {
+            "question": "ソフトウェアに変更（修正や機能追加など）を加えた際に、その変更によって既存の機能に悪影響が及んでいないか、以前は問題なかった機能が正常に動作するかを確認するテストはどれか。",
+            "options": [
+              "ア. 単体テスト",
+              "イ. システムテスト",
+              "ウ. レグレッションテスト（回帰テスト）",
+              "エ. 運用テスト"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "レグレッションテスト（回帰テスト）は、プログラムの修正や機能追加を行った際に、その変更によって既存の機能がデグレード（退行）していないか、新たな不具合が発生していないかを確認するためのテストです。自動化されることが多いです。",
+            "topic": "テスト手法"
+          },
+          {
+            "question": "開発初期段階で試作システム（プロトタイプ）を作成し、利用者に使ってもらいながら要件を具体化していく開発手法はどれか。",
+            "options": [
+              "ア. ウォーターフォールモデル",
+              "イ. プロトタイピングモデル",
+              "ウ. スパイラルモデル",
+              "エ. アジャイル開発"
+            ],
+            "correct_answer": "イ",
+            "explanation": "プロトタイピングモデルは、特に要件が不明確な場合に有効な開発手法です。初期段階でユーザーの意見を取り入れながらプロトタイプを開発し、徐々に最終システムに近づけていくことで、手戻りを減らし、ユーザー満足度の高いシステムを構築します。",
+            "topic": "開発手法"
+          },
+          {
+            "question": "WBS（Work Breakdown Structure）において、これ以上分解する必要がないと判断された、個別に管理可能な最小単位の作業成果物を何と呼ぶか。",
+            "options": [
+              "ア. マイルストーン",
+              "イ. アクティビティ",
+              "ウ. ワークパッケージ",
+              "エ. クリティカルパス"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "ワークパッケージは、WBSの最も低いレベルに位置する、明確に定義された作業の最小単位です。通常、責任者、期間、コストが割り当てられ、進捗が管理されます。",
+            "topic": "プロジェクトマネジメント"
+          },
+          {
+            "question": "ITサービスマネジメントにおいて、ITサービスの構成要素に加えられるすべての変更を適切に計画、評価、承認、実装、レビューするためのプロセスはどれか。",
+            "options": [
+              "ア. インシデント管理",
+              "イ. 問題管理",
+              "ウ. 変更管理",
+              "エ. リリース管理及び展開管理"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "変更管理は、ITサービスの安定性を維持しながら、必要な変更を計画的かつ統制された方法で実施するためのプロセスです。変更によるリスクを評価し、適切な承認を経て実施することで、サービスへの悪影響を最小限に抑えます。",
+            "topic": "ITサービスマネジメント"
+          },
+          {
+            "question": "システム監査において、監査報告書で指摘された改善事項が、適切に実施されているかを確認する活動を何と呼ぶか。",
+            "options": [
+              "ア. 予備調査",
+              "イ. 本調査",
+              "ウ. 監査計画",
+              "エ. フォローアップ"
+            ],
+            "correct_answer": "エ",
+            "explanation": "フォローアップは、システム監査報告書で指摘された問題点や改善勧告に対して、被監査部門がどのような対策を講じ、その対策が適切に実施されているかを監査人が確認する活動です。これにより監査の実効性を高めます。",
+            "topic": "システム監査"
+          },
+          {
+            "question": "損益分岐点分析において、売上高に対する変動費の割合を示す指標はどれか。",
+            "options": [
+              "ア. 固定費率",
+              "イ. 変動費率",
+              "ウ. 粗利率",
+              "エ. 営業利益率"
+            ],
+            "correct_answer": "イ",
+            "explanation": "変動費率は、変動費を売上高で割った値で、売上高1単位あたりの変動費の割合を示します。この変動費率が低いほど、売上が増えたときに利益が大きく増えることになります。",
+            "topic": "損益分岐点"
+          },
+          {
+            "question": "事業活動に有用な技術上または営業上の情報であって、秘密として管理されており、公然と知られていないものを保護する法律上の概念はどれか。",
+            "options": [
+              "ア. 特許権",
+              "イ. 営業秘密",
+              "ウ. 限定提供データ",
+              "エ. 著作財産権"
+            ],
+            "correct_answer": "イ",
+            "explanation": "営業秘密は、不正競争防止法によって保護される情報です。「秘密管理性」「有用性」「非公知性」の3つの要件を満たすことで、不正な取得や開示、使用などに対して法的な保護が与えられます。",
+            "topic": "知的財産権"
+          },
+          {
+            "question": "ネットワーク上でサーバーソフトウェアを利用する際に、クライアント（ユーザーまたはデバイス）ごとに購入が必要なライセンスの形態はどれか。",
+            "options": [
+              "ア. ボリュームライセンス",
+              "イ. サイトライセンス",
+              "ウ. CAL",
+              "エ. シュリンクラップライセンス"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "CAL（Client Access License：クライアントアクセスライセンス）は、サーバーソフトウェアに接続するクライアント（ユーザーまたはデバイス）に対して発行されるライセンスです。接続するクライアントの数に応じて購入が必要です。",
+            "topic": "ソフトウェア使用承諾"
+          },
+          {
+            "question": "経済産業省とIPAが共同で策定し、経営者が認識すべきサイバーセキュリティのリスクと対策についてまとめたガイドラインはどれか。",
+            "options": [
+              "ア. サイバーセキュリティ基本法",
+              "イ. 不正アクセス禁止法",
+              "ウ. サイバーセキュリティ経営ガイドライン",
+              "エ. 個人情報保護法"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "サイバーセキュリティ経営ガイドラインは、経済産業省とIPAが共同で策定したもので、企業等の経営者がサイバー攻撃リスクを適切に認識し、対策を講じるための具体的な指針を提供します。",
+            "topic": "セキュリティ関連法規"
+          },
+          {
+            "question": "特定の個人を識別できないように個人情報を加工し、かつ、その個人情報を復元できないようにした情報のことを、個人情報保護法で何と呼ぶか。",
+            "options": [
+              "ア. 要配慮個人情報",
+              "イ. 個人識別符号",
+              "ウ. 個人関連情報",
+              "エ. 匿名加工情報"
+            ],
+            "correct_answer": "エ",
+            "explanation": "匿名加工情報とは、個人情報の一部を削除したり、別の情報に置き換えたりすることで、特定の個人を識別できないように加工し、元の個人情報を復元できないようにした情報のことです。ビジネスでのデータ活用を促進するために設けられました。",
+            "topic": "個人情報保護法"
+          },
+          {
+            "question": "プロジェクトの計画や進捗管理に用いられる視覚的なツールで、横軸に時間、縦軸に作業項目をとり、各作業の開始日と終了日を棒グラフで表現するものはどれか。",
+            "options": [
+              "ア. アローダイアグラム",
+              "イ. WBS",
+              "ウ. ガントチャート",
+              "エ. バーンダウンチャート"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "ガントチャートは、プロジェクト管理で広く用いられる表形式のグラフで、各タスクの期間と依存関係を視覚的に表現します。これにより、プロジェクト全体のスケジュールと進捗を一目で把握できます。",
+            "topic": "プロジェクトマネジメント"
+          },
+          {
+            "question": "ITサービスマネジメントにおいて、ITサービスの П中断や品質低下の原因となっている根本的な問題を特定し、その再発防止策を講じることを目的としたプロセスはどれか。",
+            "options": [
+              "ア. インシデント管理",
+              "イ. 問題管理",
+              "ウ. 構成管理",
+              "エ. リリース管理及び展開管理"
+            ],
+            "correct_answer": "イ",
+            "explanation": "問題管理は、インシデント管理がサービスの迅速な復旧を目指すのに対し、インシデントの根本原因を特定し、その問題を解決することで、同種のインシデントの再発を防止したり、影響を軽減したりすることを目的とします。",
+            "topic": "ITサービスマネジメント"
+          },
+          {
+            "question": "システム化構想に基づき、具体的なシステム開発の範囲、スケジュール、予算、必要な資源、開発体制、費用対効果などを詳細に決定するプロセスはどれか。",
+            "options": [
+              "ア. システム化構想",
+              "イ. 業務要件定義",
+              "ウ. システム化計画",
+              "エ. システム設計"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "システム化計画は、システム化構想で定められた全体像に基づき、システム開発を具体的に実行するための詳細な計画を策定するプロセスです。開発プロジェクトの成功に直結する重要な工程であり、プロジェクトのスコープ、スケジュール、コスト、品質、リスクなどを明確にします。",
+            "topic": "企画プロセス"
+          },
+          {
+            "question": "ソフトウェア品質特性の一つで、ソフトウェアが、その目的を達成するために必要とされる機能を提供できる度合いを示すものはどれか。",
+            "options": [
+              "ア. 信頼性",
+              "イ. 使用性",
+              "ウ. 機能性",
+              "エ. 効率性"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "機能性は、ソフトウェアが明示された、または暗黙の必要性を満たす機能を提供できる能力を指します。つまり、意図されたタスクを正確に実行できるかどうかの度合いです。",
+            "topic": "ソフトウェア品質特性"
+          },
+          {
+            "question": "システム設計プロセスにおいて、システムの論理的な構造やデータフローを具体化し、システム全体の構成要素やその相互関係を定義する活動はどれか。",
+            "options": [
+              "ア. ソフトウェア要件定義",
+              "イ. システム設計",
+              "ウ. ソフトウェア設計",
+              "エ. ソフトウェア構築"
+            ],
+            "correct_answer": "イ",
+            "explanation": "システム設計は、システム要件定義で定義された要件に基づき、システム全体のアーキテクチャや各サブシステムの機能、データ構造、インターフェースなどを具体的に設計するプロセスです。",
+            "topic": "開発プロセス"
+          },
+          {
+            "question": "プロジェクトマネジメントの知識エリアの一つで、プロジェクトで発生しうる不確実な事象を特定し、その影響を分析し、対応策を計画する活動を何と呼ぶか。",
+            "options": [
+              "ア. スコープマネジメント",
+              "イ. コストマネジメント",
+              "ウ. リスクマネジメント",
+              "エ. 品質マネジメント"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "リスクマネジメントは、プロジェクトの目標達成に影響を与える可能性のある不確実な事象（リスク）を特定し、分析し、適切な対応策を計画・実行することで、プロジェクトの成功確率を高める活動です。",
+            "topic": "プロジェクトマネジメント"
+          },
+          {
+            "question": "ITサービスマネジメントにおいて、ITサービスおよびその構成要素に関するすべての情報を正確に記録・管理し、ITインフラストラクチャの信頼性と効率性を確保するプロセスはどれか。",
+            "options": [
+              "ア. インシデント管理",
+              "イ. 問題管理",
+              "ウ. 構成管理",
+              "エ. IT資産管理"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "構成管理は、ITサービスを提供する上で必要となるすべての構成要素（ハードウェア、ソフトウェア、文書など）に関する情報を正確に識別、記録、管理し、その最新の状態を把握するためのプロセスです。",
+            "topic": "ITサービスマネジメント"
+          },
+          {
+            "question": "システム開発の見積もり手法の一つで、過去の類似プロジェクトのデータや実績を基にして、今回のプロジェクトの工数やコストを見積もる方法はどれか。",
+            "options": [
+              "ア. ファンクションポイント法",
+              "イ. プログラムステップ法",
+              "ウ. 類推見積法",
+              "エ. パラメトリック見積法"
+            ],
+            "correct_answer": "ウ",
+            "explanation": "類推見積法（アナロガス見積法）は、過去に実施された類似のプロジェクトの実績データ（工数、コスト、期間など）を基にして、現在のプロジェクトの見積もりを行う手法です。プロジェクトの初期段階や詳細情報が不足している場合に用いられます。",
+            "topic": "見積法"
+          }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let selectedOptionIndex = null;
+        let answeredQuestions = 0;
+        const incorrectTopics = {}; // { topic: count }
+
+        // DOM Elements
+        const currentQuestionNumberSpan = document.getElementById('current-question-number');
+        const totalQuestionsSpan = document.getElementById('total-questions');
+        const questionTextElement = document.getElementById('question-text');
+        const optionsContainer = document.getElementById('options-container');
+        const submitButton = document.getElementById('submit-button');
+        const nextButton = document.getElementById('next-button');
+        const explanationSection = document.getElementById('explanation-section');
+        const explanationTextElement = document.getElementById('explanation-text');
+        const correctAnswerDisplay = document.getElementById('correct-answer-display');
+
+        const progressBar = document.getElementById('progress-bar');
+        const progressText = document.getElementById('progress-text');
+        const correctCountSpan = document.getElementById('correct-count');
+        const totalAnsweredSpan = document.getElementById('total-answered');
+
+        const progressCard = document.getElementById('progress-card');
+        const resultsCard = document.getElementById('results-card');
+        const finalScoreElement = document.getElementById('final-score');
+        const adviceList = document.getElementById('advice-list');
+
+        // Initial setup
+        totalQuestionsSpan.textContent = quizData.length;
+        submitButton.disabled = true;
+        nextButton.disabled = true;
+
+        // Function to shuffle array (Fisher-Yates algorithm)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+            }
+        }
+        shuffleArray(quizData); // Shuffle questions once at the start
+
+        function renderQuiz() {
+            if (currentQuestionIndex >= quizData.length) {
+                displayResults();
+                return;
+            }
+
+            resetQuizCard(); // Reset UI state for the new question
+            const question = quizData[currentQuestionIndex];
+            currentQuestionNumberSpan.textContent = currentQuestionIndex + 1;
+            questionTextElement.textContent = question.question;
+
+            optionsContainer.innerHTML = '';
+            question.options.forEach((option, index) => {
+                const optionElement = document.createElement('div');
+                optionElement.className = 'option-item relative flex items-center p-4 rounded-lg bg-secondary text-text-dark cursor-pointer select-none transition-all duration-200 ease-in-out hover:bg-primary hover:text-white shadow-sm';
+                optionElement.innerHTML = `
+                    <input type="radio" name="quiz-option" id="option-${index}" class="hidden" value="${option}">
+                    <label for="option-${index}" class="absolute inset-0 cursor-pointer flex items-center p-4">
+                        <span class="w-5 h-5 border-2 border-primary rounded-full flex-shrink-0 mr-4 flex items-center justify-center transition-all duration-150 ease-in-out">
+                            <span class="w-3 h-3 rounded-full bg-white transition-transform duration-150 scale-0"></span>
+                        </span>
+                        <span class="text-base sm:text-lg font-medium leading-tight">${option}</span>
+                    </label>
+                `;
+                optionsContainer.appendChild(optionElement);
+
+                // Attach event listener to the wrapper div
+                optionElement.addEventListener('click', () => selectOption(index));
+            });
+            submitButton.disabled = true; // Initially disabled until an option is selected
+            nextButton.disabled = true;
+            explanationSection.classList.add('hidden');
+            explanationSection.style.maxHeight = '0'; // For smooth collapse/expand animation
+            explanationSection.style.paddingTop = '0';
+            explanationSection.style.paddingBottom = '0';
+        }
+
+        function selectOption(index) {
+            selectedOptionIndex = index;
+            const optionElements = optionsContainer.querySelectorAll('.option-item');
+            optionElements.forEach((el, i) => {
+                el.classList.remove('bg-primary', 'text-white', 'border-primary-dark'); // Remove previous selection styles
+                el.querySelector('span:first-child span').classList.remove('scale-100', 'bg-primary');
+                el.classList.add('bg-secondary', 'text-text-dark'); // Reset to default
+                if (i === index) {
+                    el.classList.add('bg-primary', 'text-white', 'border-primary-dark'); // Apply selected styles
+                    el.querySelector('span:first-child span').classList.add('scale-100', 'bg-white'); // White dot for selected
+                }
+            });
+            submitButton.disabled = false; // Enable submit button once an option is chosen
+        }
+
+        function submitAnswer() {
+            if (selectedOptionIndex === null) return; // Should not happen if button is disabled correctly
+
+            const question = quizData[currentQuestionIndex];
+            const selectedAnswer = question.options[selectedOptionIndex];
+            const isCorrect = selectedAnswer.startsWith(question.correct_answer);
+
+            // Apply feedback styling
+            if (isCorrect) {
+                score++;
+                optionsContainer.children[selectedOptionIndex].classList.remove('bg-primary', 'text-white', 'bg-secondary');
+                optionsContainer.children[selectedOptionIndex].classList.add('bg-correct-light', 'border-correct', 'border-2', 'text-text-dark');
+                optionsContainer.children[selectedOptionIndex].querySelector('span:first-child span').classList.remove('bg-white');
+                optionsContainer.children[selectedOptionIndex].querySelector('span:first-child span').classList.add('bg-correct'); // Green dot for correct
+            } else {
+                optionsContainer.children[selectedOptionIndex].classList.remove('bg-primary', 'text-white', 'bg-secondary');
+                optionsContainer.children[selectedOptionIndex].classList.add('bg-incorrect-light', 'border-incorrect', 'border-2', 'text-text-dark');
+                optionsContainer.children[selectedOptionIndex].querySelector('span:first-child span').classList.remove('bg-white');
+                optionsContainer.children[selectedOptionIndex].querySelector('span:first-child span').classList.add('bg-incorrect'); // Red dot for incorrect
+
+                // Track incorrect topics
+                incorrectTopics[question.topic] = (incorrectTopics[question.topic] || 0) + 1;
+            }
+
+            // Always highlight the correct answer in green
+            question.options.forEach((option, idx) => {
+                if (option.startsWith(question.correct_answer) && idx !== selectedOptionIndex) {
+                    optionsContainer.children[idx].classList.remove('bg-secondary');
+                    optionsContainer.children[idx].classList.add('bg-correct-light', 'border-correct', 'border-2', 'text-text-dark');
+                    optionsContainer.children[idx].querySelector('span:first-child span').classList.add('scale-100', 'bg-correct');
+                }
+            });
+
+            // Disable further selection by removing event listeners and changing cursor
+            optionsContainer.querySelectorAll('.option-item').forEach(el => {
+                el.removeEventListener('click', selectOption);
+                el.classList.remove('cursor-pointer', 'hover:bg-primary', 'hover:text-white');
+                el.classList.add('cursor-not-allowed');
+            });
+
+            submitButton.disabled = true; // Disable submit button
+            nextButton.disabled = false; // Enable next question button
+
+            // Display explanation
+            explanationTextElement.textContent = question.explanation;
+            correctAnswerDisplay.textContent = question.correct_answer;
+            explanationSection.classList.remove('hidden');
+            // Animate explanation section to slide down
+            requestAnimationFrame(() => {
+                explanationSection.style.maxHeight = explanationSection.scrollHeight + 'px';
+                explanationSection.style.paddingTop = '1.5rem'; /* p-6 */
+                explanationSection.style.paddingBottom = '1.5rem'; /* p-6 */
+            });
+
+            answeredQuestions++;
+            updateProgress();
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            renderQuiz(); // Render the next question or display results if quiz is over
+        }
+
+        function resetQuizCard() {
+            selectedOptionIndex = null;
+            submitButton.disabled = true;
+            nextButton.disabled = true;
+            // Hide explanation section smoothly
+            explanationSection.style.maxHeight = '0';
+            explanationSection.style.paddingTop = '0';
+            explanationSection.style.paddingBottom = '0';
+            // Use setTimeout to ensure the transition completes before hiding with 'hidden'
+            setTimeout(() => {
+                explanationSection.classList.add('hidden');
+            }, 300); // Duration of the transition
+        }
+
+        function updateProgress() {
+            const percentage = (answeredQuestions / quizData.length) * 100;
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = `${Math.round(percentage)}%`;
+            correctCountSpan.textContent = score;
+            totalAnsweredSpan.textContent = answeredQuestions;
+        }
+
+        function displayResults() {
+            progressCard.classList.add('hidden'); // Hide progress card
+            resultsCard.classList.remove('hidden'); // Show results card
+
+            const finalPercentage = (score / quizData.length) * 100;
+            finalScoreElement.textContent = `${finalPercentage.toFixed(1)}%`;
+
+            adviceList.innerHTML = ''; // Clear previous advice
+            const sortedTopics = Object.entries(incorrectTopics).sort((a, b) => b[1] - a[1]); // Sort by most incorrect
+
+            if (sortedTopics.length > 0) {
+                adviceList.innerHTML = '<p class="text-text-dark font-medium mb-3">以下のトピックを重点的に復習しましょう:</p>';
+                sortedTopics.slice(0, 5).forEach(([topic, count]) => { // Show top 5 topics
+                    const topicElement = document.createElement('div');
+                    topicElement.className = 'p-3 bg-secondary rounded-lg text-text-dark shadow-sm text-sm flex justify-between items-center transition-all duration-300 ease-in-out hover:bg-secondary-dark';
+                    topicElement.innerHTML = `
+                        <span class="font-semibold">${topic}</span>
+                        <span class="text-text-muted text-xs">(${count}問不正解)</span>
+                    `;
+                    adviceList.appendChild(topicElement);
+                });
+            } else {
+                adviceList.innerHTML = '<p class="text-correct font-medium text-lg">素晴らしい！全ての質問に正解しました！</p>';
+            }
+        }
+
+        // Event Listeners
+        submitButton.addEventListener('click', submitAnswer);
+        nextButton.addEventListener('click', nextQuestion);
+
+        // Initial render of the first question
+        renderQuiz();
+    </script>
+</body>
+</html>
